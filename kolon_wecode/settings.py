@@ -50,12 +50,12 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'corsheaders',
-    # 'cores',
-    # 'users',
-    # 'dealers',
-    # 'cars',
-    # 'notifications',
-    # 'testcar',
+    'cores',
+    'estimates',
+    'dealers',
+    'cars',
+    'notifications',
+    'testcar',
 ]
 
 
