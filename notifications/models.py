@@ -3,7 +3,7 @@ from django.db import models
 from cores.models import TimeStampModel
 
 class SalesProcess(models.Model):
-    estimate          = models.ForeignKey('cars.Estimate', on_delete = models.CASCADE)
+    estimate          = models.ForeignKey('estimates.Estimate', on_delete = models.CASCADE)
     quote_requested   = models.DateTimeField()
     dealer_assigned   = models.DateTimeField()
     dealer_consulting = models.DateTimeField()

@@ -51,7 +51,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'corsheaders',
     'cores',
-    'users',
+    'estimates',
     'dealers',
     'cars',
     'notifications',
