@@ -1,5 +1,3 @@
-#cars/views.py
-
 import json, jwt, requests
 
 from datetime import datetime, timedelta
@@ -148,3 +146,4 @@ class KakaoLoginView(View):
             
         except KeyError:
             return JsonResponse({'message' : "KEY_ERROR"}, status=400) 
+

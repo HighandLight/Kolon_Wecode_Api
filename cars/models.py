@@ -1,8 +1,11 @@
+from ctypes import addressof
 from django.db import models
 
 from cores.models import TimeStampModel
 
 class Car(TimeStampModel):
+    address                 = models.CharField(max_length = 100, null = True)
+    phone_number            = models.CharField(max_length = 100, null = True)
     owner                   = models.CharField(max_length = 15)
     car_number              = models.CharField(max_length = 15, unique = True)
     kakao_id                = models.BigIntegerField(null=True)
@@ -33,5 +36,3 @@ class TransactionHistory(models.Model):
 
     class Meta:
         db_table = 'transaction_histories'
-
-        

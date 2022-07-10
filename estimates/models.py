@@ -12,13 +12,13 @@ class Estimate(TimeStampModel):
     ventilation_seat         = models.BooleanField()
     heated_seat              = models.BooleanField()
     electric_seat            = models.BooleanField()
-    smart_key                = models.BooleanField()
     leather_seat             = models.BooleanField()
+    smart_key                = models.BooleanField()
     electric_folding_mirror  = models.BooleanField()
-    accident_status          = models.BooleanField()
     spare_key                = models.IntegerField()
     wheel_scratch            = models.IntegerField()
     outer_plate_scratch      = models.IntegerField()
+    accident_status          = models.TextField()
     other_maintenance_repair = models.TextField()
     other_special            = models.TextField()
 
@@ -32,3 +32,11 @@ class EstimateCarImage(models.Model):
 
     class Meta:
         db_table = 'estimate_car_images'
+
+class Consulting(models.Model):
+    dealer   = models.ForeignKey('dealers.Dealer', on_delete = models.CASCADE)
+    estimate = models.ForeignKey('estimates.Estimate', on_delete = models.CASCADE)
+    content  = models.TextField()
+
+    class Meta:
+        db_table = 'consultings'
