@@ -20,3 +20,11 @@ class Branch(TimeStampModel):
 
     class Meta:
         db_table = 'branches'
+
+class Consulting(TimeStampModel):
+    estimate      = models.ForeignKey('estimates.Estimate', on_delete = models.CASCADE)
+    dealer        = models.ForeignKey('dealers.Dealer', on_delete = models.CASCADE, default = 1)
+    content       = models.TextField()
+
+    class Meta:
+        db_table = 'consulting'
