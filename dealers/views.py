@@ -3,6 +3,7 @@ import re
 import bcrypt
 import jwt
 from datetime import datetime
+from datetime import timedelta
 
 from django.http  import JsonResponse
 from django.views import View
@@ -88,29 +89,42 @@ class AdminView(View):
         }
         
         return JsonResponse({'results':results}, status=200)
+    
 
 class EstimateListView(View):
     @admin_login_decorator
+    # admin 견적서 리스트 페이지
     def get(self, request):
         #페이지네이션
-        offset         = int(request.GET.get('offset', 0))
-        limit          = int(request.GET.get('limit', 12))
-        process_state   = request.GET.getlist('state')
-
-        # search         = request.GET.get('search')
-
-        q = Q()
-
-        if process_state:
-            q &= Q(sales_process__process_state__in=process_state)
-
-        # if search:
-        #     q &= Q(name__icontains=search)
-            
+        offset        = int(request.GET.get('offset', 0))
+        limit         = int(request.GET.get('limit', 12))
+        #필터기능 (날짜, 현재 진행상태, 지점명, 딜러명)
+        start_date    = request.GET.get('start_date')
+        end_date      = request.GET.get('end_date')
+        process_state = request.GET.getlist('state')
+        branch_name   = request.GET.get('branch_name')
+        dealer_name   = request.GET.get('dealer_name')
+        
         dealer = request.dealer
         # Sales Consultant일 경우 해당 지점의 견적서만 확인 가능
         if dealer.level == "Sales Consultant":
-            quote_notifications = QuoteNotification.objects.filter(branch_id=dealer.branch_id|q).distinct()[offset:offset+limit]
+            q = Q()
+            if process_state:
+                q &= Q(sales_process__process_state__in=process_state)
+                
+            if dealer_name:
+                q &= Q(sales_process__estimate__consulting__dealer__name=dealer_name)
+                
+            if start_date != None or end_date != None:
+                start_date   = datetime.strptime(start_date, '%Y-%m-%d')
+                end_date     = datetime.strptime(end_date, '%Y-%m-%d')
+                data_delta   = timedelta(days=1)
+                new_end_date = end_date + data_delta
+                q &= Q(sales_process__estimate__created_at__range=[start_date, new_end_date])
+            
+            q |= Q(branch_id=dealer.branch_id)
+            
+            quote_notifications = QuoteNotification.objects.filter(q).distinct().order_by('-id')[offset:offset+limit]
             # 해당 지점의 Sales Consultant 이름
             info = {
                 'branch' : dealer.branch.name,
@@ -145,6 +159,23 @@ class EstimateListView(View):
             return JsonResponse({'info': info, 'results': results}, status=200)
         # Showroom Manager일 경우 전체 지점의 견적 확인 가능
         if dealer.level == "Showroom Manager":
+            q = Q()
+            if process_state:
+                q &= Q(sales_process__process_state__in=process_state)
+                
+            if branch_name:
+                q &= Q(branch__name=branch_name)
+                
+            if dealer_name:
+                q &= Q(sales_process__estimate__consulting__dealer__name=dealer_name)
+                
+            if start_date != None or end_date != None:
+                start_date   = datetime.strptime(start_date, '%Y-%m-%d')
+                end_date     = datetime.strptime(end_date, '%Y-%m-%d')
+                data_delta   = timedelta(days=1)
+                new_end_date = end_date + data_delta
+                q &= Q(sales_process__estimate__created_at__range=[start_date, new_end_date])
+                
             quote_notifications = QuoteNotification.objects.filter(q).distinct()[offset:offset+limit]
             branches            = Branch.objects.all()
             # 전체 지점 이름과 지점의 속해 있는데 전체 직원 이름
@@ -317,13 +348,13 @@ class ConsultingView(View):
         try :
             data        = json.loads(request.body)
             estimate_id = data['estimate_id']
-            dealer_id = data['dealer_id']
+            dealer_id   = data['dealer_id']
             # 이미 진행 되고 있는 컨설팅이 있을 경우 에러 처리 / 수정으로 추가 진행 필요
             if Consulting.objects.filter(estimate_id = estimate_id):
                 return JsonResponse({'Message' : 'THE_CONSULTING_ALREADY_EXISTS'}, status=404)
             # [transaction] 여러개의 create 처리 시 한건 이라도 처리 되지 않을 경우 전체 처리 X
             with transaction.atomic():
-                Consulting.objects.create(
+                consulting = Consulting.objects.create(
                     estimate_id = estimate_id,
                     dealer_id   = dealer_id,
                 )
@@ -334,8 +365,9 @@ class ConsultingView(View):
                 sales_process.dealer_assigned = datetime.now()
                 sales_process.save()
                 #딜러 알림 끄기
-                quote_notification = sales_process.quotenotification_set.all()[0]
+                quote_notification               = sales_process.quotenotification_set.all()[0]
                 quote_notification.dealer_assign = True
+                quote_notification.branch_id     = consulting.dealer.branch.id
                 quote_notification.save()
                 # 고객 알림 작성
                 UserNotification.objects.create(
@@ -345,6 +377,7 @@ class ConsultingView(View):
                 )
                 
             return JsonResponse({'Message': 'SUCCESS'}, status=200)
+        
         except transaction.TransactionManagementError:
             return JsonResponse({'Message': 'TransactionManagementError'}, status=400)
         
@@ -355,10 +388,10 @@ class ConsultingView(View):
     @admin_login_decorator
     def patch(self, request): 
         try :
-            data        = json.loads(request.body)
-            dealer      = request.dealer
-            estimate_id = data['estimate_id']
-            process_state      = data['status']
+            data          = json.loads(request.body)
+            dealer        = request.dealer
+            estimate_id   = data['estimate_id']
+            process_state = data['status']
             
             if process_state == "딜러배정":
                 sales_process = SalesProcess.objects.get(estimate_id = estimate_id)
@@ -370,7 +403,7 @@ class ConsultingView(View):
                 #판매 프로세스 '방문상담 '시간 작성
                 sales_process = SalesProcess.objects.get(estimate_id = estimate_id)
                 
-                sales_process.process_state = process_state
+                sales_process.process_state     = process_state
                 sales_process.dealer_consulting = datetime.now()
                 sales_process.save()
                 # 고객 알림 작성
@@ -384,7 +417,7 @@ class ConsultingView(View):
                 #판매 프로세스 '방문상담 '시간 작성
                 sales_process = SalesProcess.objects.get(estimate_id = estimate_id)
                 
-                sales_process.process_state = process_state
+                sales_process.process_state     = process_state
                 sales_process.selling_requested = datetime.now()
                 sales_process.save()
                 # 고객 알림 작성
@@ -398,7 +431,7 @@ class ConsultingView(View):
                 #판매 프로세스 '방문상담 '시간 작성
                 sales_process = SalesProcess.objects.get(estimate_id = estimate_id)
                 
-                sales_process.process_state = process_state
+                sales_process.process_state     = process_state
                 sales_process.selling_completed = datetime.now()
                 sales_process.save()
                 # 고객 알림 작성
