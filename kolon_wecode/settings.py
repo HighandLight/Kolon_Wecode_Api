@@ -6,6 +6,8 @@ from pathlib import Path
 
 pymysql.install_as_MySQLdb()
 
+pymysql.install_as_MySQLdb()
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 env = environ.Env(
