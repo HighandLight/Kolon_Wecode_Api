@@ -5,10 +5,12 @@ from datetime import datetime, timedelta
 from django.http import JsonResponse
 from django.views import View
 from django.conf import settings
+from django.db.models import Sum
 from django.db import transaction
 
 from cars.models import Car, InsuranceHistory, TransactionHistory
 from estimates.models import Estimate
+from testcar.models import TestCar
 from cars.utils import (
     login_decorator,
     validate_car_number,
@@ -155,3 +157,105 @@ class KakaoLoginView(View):
         except KeyError:
             return JsonResponse({'message' : "KEY_ERROR"}, status=400) 
 
+class Car365APIView(View):
+    # 추후 국토부 API사용시 불러올 정보를 가정한 내용
+    def get(self, request): 
+        try :
+            data       = json.loads(request.body)
+            car_number = data['car_number']
+            owner      = data['owner']
+            
+            # 처음 등록한 차량번호와 다른 차량번호 (이미 DB에 등록되어 있는 정보) 입력 방지를 위한 에러처리
+            if Car.objects.filter(car_number = car_number, owner = owner):
+                return JsonResponse({'Message' : 'THE_CAR_NUMBER_AND_OWNER_ALREADY_EXISTS'}, status=404)
+            
+            #차량번호와 소유자명이 다를 경우 에러처리
+            if not TestCar.objects.filter(number = car_number, owner = owner).exists():
+                return JsonResponse({'Message' : 'INVALID_CAR_NUMBER_OR_OWNER'}, status=404)
+            
+            # 추후 국토부 API를 가정한 DB
+            testcar = TestCar.objects.get(number = car_number, owner = owner)
+            
+            results = {
+                'car_number'             : testcar.number,
+                'owner'                  : testcar.owner,
+                'manufacturer'           : testcar.manufacturer,
+                'car_name'               : testcar.car_name,
+                'trim'                   : testcar.trim,
+                'body_shape'             : testcar.body_shape,
+                'color'                  : testcar.color,
+                'model_year'             : testcar.model_year,
+                'first_registration_year': testcar.first_registration_year,
+                'mileage'                : testcar.mileage,
+                'engine'                 : testcar.engine,
+                'transmission'           : testcar.transmission,
+                'factory_price'          : testcar.factory_price,
+                'transaction_price'      : testcar.transaction_price,
+                'insurance_history'      : [history.history for history in testcar.testinsurancehistory_set.all()],
+                'transaction_history'    : [history.history for history in testcar.testtransactionhistory_set.all()]
+            }
+            
+            return JsonResponse({'results': results}, status=200)
+        
+        except KeyError: 
+            return JsonResponse({'Message' : 'KEY_ERROR'}, status=400)
+
+class CarInformationView(View):
+    # 회원가입 이후 등록된 내 차량 정보 확인
+    @login_decorator
+    def get(self, request): 
+        car = request.car
+        
+        results = {
+            'car_number'             : car.car_number,
+            'owner'                  : car.owner,
+            'manufacturer'           : car.manufacturer,
+            'car_name'               : car.car_name,
+            'trim'                   : car.trim,
+            'body_shape'             : car.body_shape,
+            'color'                  : car.color,
+            'model_year'             : car.model_year,
+            'first_registration_year': car.first_registration_year,
+            'engine'                 : car.engine,
+            'transmission'           : car.transmission,
+            'insurance_history'      : [history.history for history in car.insurancehistory_set.all()],
+            'transaction_history'    : [history.history for history in car.transactionhistory_set.all()]
+        }
+        
+        return JsonResponse({'results': results}, status=200)
+        
+    # 차량 관련 전체 정보 삭제하기
+    @login_decorator
+    def delete(self, request):
+        car = request.car
+        car.estimate_set.all()[0].estimatecarimage_set.all().delete()
+        car.estimate_set.all().delete()
+        car.insurancehistory_set.all().delete()
+        car.transactionhistory_set.all().delete()
+        car.delete()
+        
+        return JsonResponse({'Message': 'NO_CONTENT'}, status=200)
+
+class CarPriceView(View):
+    @login_decorator
+    # 차량 시세 보기
+    def get(self, request): 
+        # 차량시세 그래프 용 차량이름, 트림
+        cars_1 = TestCar.objects.filter(car_name = request.car.car_name, trim = request.car.trim)
+        
+        transaction = [{
+            'model_year': car.model_year,
+            'price'     : car.transaction_price,
+        }for car in cars_1]
+        
+        # 차량시세 그래프 용 차량이름, 트림, 연식
+        cars_2 = TestCar.objects.filter\
+            (car_name = request.car.car_name, trim = request.car.trim, model_year = request.car.model_year)
+        price = cars_2.aggregate(Sum('transaction_price'))
+        
+        estimated_price = price['transaction_price__sum'] / len(cars_2)
+        
+        # 차량시세 그래프 용 차량이름, 트림 개수 / 추후 x개 이하 일 경우 데이터가 부족하다는 문구 띄울 예정
+        count = len(cars_2)
+        
+        return JsonResponse({'estimated_price': int(estimated_price), 'transaction_count' : count, 'transaction': transaction}, status=200)
