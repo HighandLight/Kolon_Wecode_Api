@@ -1,6 +1,5 @@
 import os
 import environ
-
 from pathlib        import Path
 
 
@@ -29,7 +28,8 @@ SECRET_KEY = env('SECRET_KEY')
 
 DEBUG = env('DEBUG')
 
-ALLOWED_HOSTS = env('ALLOWED_HOSTS')
+# ALLOWED_HOSTS = env('ALLOWED_HOSTS')
+ALLOWED_HOSTS = ['*']
 
 DATABASES = {
     'default': {
