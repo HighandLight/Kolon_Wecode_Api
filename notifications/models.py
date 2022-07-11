@@ -4,12 +4,13 @@ from cores.models import TimeStampModel
 
 class SalesProcess(models.Model):
     estimate          = models.ForeignKey('estimates.Estimate', on_delete = models.CASCADE)
-    quote_requested   = models.DateTimeField()
-    dealer_assigned   = models.DateTimeField()
-    dealer_consulting = models.DateTimeField()
-    selling_requested = models.DateTimeField()
-    selling_completed = models.DateTimeField()
-    termination       = models.DateTimeField()
+    quote_requested   = models.DateTimeField(null = True)
+    dealer_assigned   = models.DateTimeField(null = True)
+    dealer_consulting = models.DateTimeField(null = True)
+    selling_requested = models.DateTimeField(null = True)
+    selling_completed = models.DateTimeField(null = True)
+    termination       = models.DateTimeField(null = True)
+    process_state     = models.CharField(max_length=100, null = True)
 
     class Meta: 
         db_table = 'sales_process'
