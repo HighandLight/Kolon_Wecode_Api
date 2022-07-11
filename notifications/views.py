@@ -1,17 +1,8 @@
-import json, jwt
-from json.decoder import JSONDecodeError
-
-from django.db.models import Sum
 from django.http  import JsonResponse
-from django.db import transaction
 from django.views import View
 
-from kolon_wecode.settings  import SECRET_KEY, ALGORITHM
 from cores.utils import login_decorator, admin_login_decorator
-from cars.models import Car, InsuranceHistory, TransactionHistory
-from testcar.models import TestCar
-from estimates.models import Estimate, EstimateCarImage
-from notifications.models import SalesProcess, QuoteNotification, UserNotification
+from notifications.models import QuoteNotification
 
 class QuoteNotificationView(View):
     # admin 알람 기능 / 딜러 지정 되지 않은 내역만 필터링
@@ -24,7 +15,6 @@ class QuoteNotificationView(View):
             'car_number'   : notification.sales_process.estimate.car.car_number,
             'dealer_assign': notification.dealer_assign,
         }for notification in notifications]
-        
         
         return JsonResponse({'results': results}, status=200)
 

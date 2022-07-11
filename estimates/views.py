@@ -2,12 +2,13 @@ import json
 from datetime import datetime
 
 from django.http  import JsonResponse
-from django.db import transaction
+from django.db    import transaction
 from django.views import View
 
-from cores.utils import login_decorator
-from estimates.models import Estimate, EstimateCarImage
+from cores.utils          import login_decorator
+from estimates.models     import Estimate, EstimateCarImage
 from notifications.models import SalesProcess, QuoteNotification, UserNotification
+from cores.address        import address, lode_map, straight_distance
 
 class EstimateView(View):
     @login_decorator
@@ -43,7 +44,7 @@ class EstimateView(View):
             
             # 등록되어 있는 견적서가 이미 있을 경우 에러처리 [이전에 미리 확인 하나 서버 오류 등 발생 시 에러처리]
             if Estimate.objects.filter(car_id = car.id):
-                return JsonResponse({'Message' : 'THE_ESTIMATE_ALREADY_EXISTS'}, status=404)
+                return JsonResponse({'message' : 'THE_ESTIMATE_ALREADY_EXISTS'}, status=404)
             # [transaction] 여러개의 create 처리 시 한건 이라도 처리 되지 않을 경우 전체 처리 X
             Estimate.objects.create(
                 car_id                   = car.id,
@@ -67,10 +68,10 @@ class EstimateView(View):
                 process_state            = process_state,
             )
             
-            return JsonResponse({'Message': 'SUCCESS'}, status=200)
+            return JsonResponse({'message': 'SUCCESS'}, status=200)
         
         except KeyError: 
-            return JsonResponse({'Message' : 'KEY_ERROR'}, status=400)
+            return JsonResponse({'message' : 'KEY_ERROR'}, status=400)
     # 견적서 보기
     @login_decorator
     def get(self, request): 
@@ -101,7 +102,7 @@ class EstimateView(View):
             return JsonResponse({'results': results}, status=200)
         # 등록되어 있는 견적서 없을 경우 에러처리
         except Estimate.DoesNotExist:
-            return JsonResponse({'Message': 'ESTIMATE_DOES_NOT_EXIST'}, status = 404)
+            return JsonResponse({'message': 'ESTIMATE_DOES_NOT_EXIST'}, status = 404)
     # 견적서 수정하기
     @login_decorator
     def patch(self, request): 
@@ -132,26 +133,59 @@ class EstimateView(View):
             if estimate.process_state == "신청완료":
                 with transaction.atomic():
                     if SalesProcess.objects.filter(estimate_id = estimate.id).exists():
-                        return JsonResponse({'Message' : 'THE_ESTIMATE_ALREADY_EXISTS'}, status=404)
+                        return JsonResponse({'message' : 'THE_ESTIMATE_ALREADY_EXISTS'}, status=404)
                     else:
                         sales_process = SalesProcess.objects.create(
                             estimate        = estimate,
                             quote_requested = datetime.now(),
                             process_state   = '대기'
                         )
-                        # 지도 API 구현 후 수정 필요
-                return JsonResponse({'Message': 'REQUEST_ESTIMATE_SUCCESS'}, status=200)
+                        #고객 견적서 주소로 좌표 확인
+                        car_address = address(estimate.address)
+                        # 카카오내비로 고객 주소와 지점 주소 거리 계산
+                        lode_map_result = lode_map(car_address[0],car_address[1])
+                        
+                        # 카카오내비 범위 넘어갔을 경우 직선거리로 계산
+                        if lode_map_result == 'RECONFIRM':
+                            straight_distance_result = straight_distance(car_address[0],car_address[1])
+                            # 딜러 알림 등록
+                            QuoteNotification.objects.create(
+                                sales_process = sales_process,
+                                branch_id     = straight_distance_result,
+                                dealer_assign = False
+                            )
+                            # 고객 알림 등록
+                            UserNotification.objects.create(
+                            sales_process = sales_process,
+                            content       = '차량의 견적요청이 접수 되었습니다.',
+                            read          = False
+                            )
+                        # 카카오내비 범위 안 일 경우 가까운 경로로 계산
+                        elif isinstance(lode_map_result, int):
+                            # 딜러 알림 등록
+                            QuoteNotification.objects.create(
+                                sales_process = sales_process,
+                                branch_id     = lode_map_result,
+                                dealer_assign = False
+                            )
+                            # 고객 알림 등록
+                            UserNotification.objects.create(
+                                sales_process = sales_process,
+                                content       = '차량의 견적요청이 접수 되었습니다.',
+                                read          = False
+                            )
+                return JsonResponse({'message': 'REQUEST_ESTIMATE_SUCCESS'}, status=200)
             
-            return JsonResponse({'Message': 'SUCCESS'}, status=200)
+            return JsonResponse({'message': 'SUCCESS'}, status=200)
         # 기본 키에러
         except KeyError: 
-            return JsonResponse({'Message' : 'KEY_ERROR'}, status=400)
+            return JsonResponse({'message' : 'KEY_ERROR'}, status=400)
         
         except transaction.TransactionManagementError:
-            return JsonResponse({'Message': 'TransactionManagementError'}, status=400)
+            return JsonResponse({'message': 'TransactionManagementError'}, status=400)
         # 등록되어 있는 견적서 없을 경우 에러처리
         except Estimate.DoesNotExist:
-            return JsonResponse({'Message': 'ESTIMATE_DOES_NOT_EXIST'}, status = 404)
+            return JsonResponse({'message': 'ESTIMATE_DOES_NOT_EXIST'}, status = 404)
     # 견적서 삭제하기
     @login_decorator
     def delete(self, request):
@@ -160,10 +194,10 @@ class EstimateView(View):
             EstimateCarImage.objects.filter(estimate_id = estimate.id).delete()
             estimate.delete()
             
-            return JsonResponse({'Message': 'NO_CONTENT'}, status=200)
+            return JsonResponse({'message': 'NO_CONTENT'}, status=200)
         # 등록되어 있는 견적서 없을 경우 에러처리
         except Estimate.DoesNotExist:
-            return JsonResponse({'Message': 'ESTIMATE_DOES_NOT_EXIST'}, status = 404)
+            return JsonResponse({'message': 'ESTIMATE_DOES_NOT_EXIST'}, status = 404)
 
 class EstimateImageView(View):
     @login_decorator
@@ -188,10 +222,10 @@ class EstimateImageView(View):
             # process_state 변경 
             estimate.process_state = "사진등록"
             estimate.save()
-            return JsonResponse({'Message': 'SUCCESS'}, status=200)
+            return JsonResponse({'message': 'SUCCESS'}, status=200)
         
         except KeyError: 
-            return JsonResponse({'Message' : 'KEY_ERROR'}, status=400)
+            return JsonResponse({'message' : 'KEY_ERROR'}, status=400)
         
     # 견적서 이미지 확인
     @login_decorator
@@ -215,10 +249,10 @@ class EstimateImageView(View):
             estimate = Estimate.objects.get(car_id = request.car.id)
             EstimateCarImage.objects.filter(estimate_id = estimate.id).delete()
             
-            return JsonResponse({'Message': 'NO_CONTENT'}, status=200)
+            return JsonResponse({'message': 'NO_CONTENT'}, status=200)
         # 등록되어 있는 견적서 없을 경우 에러처리
         except Estimate.DoesNotExist:
-            return JsonResponse({'Message': 'ESTIMATE_DOES_NOT_EXIST'}, status = 404)
+            return JsonResponse({'message': 'ESTIMATE_DOES_NOT_EXIST'}, status = 404)
 
 class EstimateDetailView(View):
     # 견적서 상세 내역 보기
@@ -270,4 +304,4 @@ class EstimateDetailView(View):
             return JsonResponse({'results': results}, status=200)
         # 등록되어 있는 견적서 없을 경우 에러처리
         except Estimate.DoesNotExist:
-            return JsonResponse({'Message': 'ESTIMATE_DOES_NOT_EXIST'}, status = 404)
+            return JsonResponse({'message': 'ESTIMATE_DOES_NOT_EXIST'}, status = 404)

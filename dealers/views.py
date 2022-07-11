@@ -3,17 +3,18 @@ import re
 import bcrypt
 import jwt
 from datetime import datetime
+from datetime import timedelta
 
-from django.http  import JsonResponse
-from django.views import View
-from django.db import transaction
-from django.db.models import Q
+from django.http            import JsonResponse
+from django.views           import View
+from django.db              import transaction
+from django.db.models       import Q
 from kolon_wecode.settings  import SECRET_KEY, ALGORITHM
 
 from notifications.models import QuoteNotification, UserNotification, SalesProcess
-from cores.utils import admin_login_decorator
-from dealers.models import Dealer, Consulting, Branch
-from estimates.models import Estimate
+from cores.utils          import admin_login_decorator
+from dealers.models       import Dealer, Consulting, Branch
+from estimates.models     import Estimate
 
 class AdminSignUpView(View):
     #딜러 회원가입
@@ -25,10 +26,10 @@ class AdminSignUpView(View):
             dealer_password = data['password']
             
             if Dealer.objects.filter(dealer_id = dealer_id):
-                return JsonResponse({'Message' : 'THE_DEALER_ID_ALREADY_EXISTS'}, status=400)
+                return JsonResponse({'message' : 'THE_DEALER_ID_ALREADY_EXISTS'}, status=400)
             
             if not re.match(PASSWORD_REGEX, dealer_password):
-                return JsonResponse({'Message' : 'INVALID_PASSWORD'}, status=400)
+                return JsonResponse({'message' : 'INVALID_PASSWORD'}, status=400)
             
             hashed_password = bcrypt.hashpw(dealer_password.encode('UTF-8'), bcrypt.gensalt()).decode('UTF-8')
             
@@ -39,10 +40,10 @@ class AdminSignUpView(View):
                 level           = data['level'],
                 branch_id       = data['branch_id'],
             ) 
-            return JsonResponse({'Message' : 'SUCCESS'}, status=201)
+            return JsonResponse({'message' : 'SUCCESS'}, status=201)
             
         except KeyError:
-            return JsonResponse({'Message' : 'KeyError'}, status=400)
+            return JsonResponse({'message' : 'KeyError'}, status=400)
 
 class AdminLoginView(View):
     #딜러 로그인
@@ -56,23 +57,23 @@ class AdminLoginView(View):
             dealer = Dealer.objects.get(dealer_id = dealer_id)
             
             if not bcrypt.checkpw(dealer_password.encode('utf-8'), dealer.dealer_password.encode('utf-8')):
-                return JsonResponse({'Message': 'INVALID_PASSWORD'}, status = 401)
+                return JsonResponse({'message': 'INVALID_PASSWORD'}, status = 401)
             
             access_token = jwt.encode({'id' : dealer.id}, SECRET_KEY, ALGORITHM)
             
             return JsonResponse({
-                'Message'     : 'SUCCESS',
-                'ACCESS_TOKEN': access_token,
+                'message'     : 'SUCCESS',
+                'access_token': access_token,
                 'name'        : dealer.name,
                 'level'       : dealer.level,
                 'branch'      : dealer.branch.name
             }, status=200)
             
         except KeyError: 
-            return JsonResponse({'Message': 'KeyError'}, status = 400)
+            return JsonResponse({'message': 'KeyError'}, status = 400)
         
         except Dealer.DoesNotExist:
-            return JsonResponse({'Message': 'INVALID_ID'}, status = 404)
+            return JsonResponse({'message': 'INVALID_ID'}, status = 404)
 
 class AdminView(View):
     @admin_login_decorator
@@ -89,28 +90,39 @@ class AdminView(View):
         
         return JsonResponse({'results':results}, status=200)
 
+# admin 견적서 리스트 페이지
 class EstimateListView(View):
     @admin_login_decorator
     def get(self, request):
         #페이지네이션
-        offset         = int(request.GET.get('offset', 0))
-        limit          = int(request.GET.get('limit', 12))
-        process_state   = request.GET.getlist('state')
-
-        # search         = request.GET.get('search')
-
-        q = Q()
-
-        if process_state:
-            q &= Q(sales_process__process_state__in=process_state)
-
-        # if search:
-        #     q &= Q(name__icontains=search)
-            
+        offset        = int(request.GET.get('offset', 0))
+        limit         = int(request.GET.get('limit', 12))
+        start_date    = request.GET.get('start_date')
+        end_date      = request.GET.get('end_date')
+        process_state = request.GET.getlist('state')
+        branch_name   = request.GET.get('branch_name')
+        dealer_name   = request.GET.get('dealer_name')
+        
         dealer = request.dealer
         # Sales Consultant일 경우 해당 지점의 견적서만 확인 가능
         if dealer.level == "Sales Consultant":
-            quote_notifications = QuoteNotification.objects.filter(branch_id=dealer.branch_id|q).distinct()[offset:offset+limit]
+            q = Q()
+            if process_state:
+                q &= Q(sales_process__process_state__in=process_state)
+                
+            if dealer_name:
+                q &= Q(sales_process__estimate__consulting__dealer__name=dealer_name)
+                
+            if start_date != None or end_date != None:
+                start_date   = datetime.strptime(start_date, '%Y-%m-%d')
+                end_date     = datetime.strptime(end_date, '%Y-%m-%d')
+                data_delta   = timedelta(days=1)
+                new_end_date = end_date + data_delta
+                q &= Q(sales_process__estimate__created_at__range=[start_date, new_end_date])
+            
+            q |= Q(branch_id=dealer.branch_id)
+            
+            quote_notifications = QuoteNotification.objects.filter(q).distinct().order_by('-id')[offset:offset+limit]
             # 해당 지점의 Sales Consultant 이름
             info = {
                 'branch' : dealer.branch.name,
@@ -145,6 +157,22 @@ class EstimateListView(View):
             return JsonResponse({'info': info, 'results': results}, status=200)
         # Showroom Manager일 경우 전체 지점의 견적 확인 가능
         if dealer.level == "Showroom Manager":
+            q = Q()
+            if process_state:
+                q &= Q(sales_process__process_state__in=process_state)
+                
+            if branch_name:
+                q &= Q(branch__name=branch_name)
+                
+            if dealer_name:
+                q &= Q(sales_process__estimate__consulting__dealer__name=dealer_name)
+                
+            if start_date != None or end_date != None:
+                start_date   = datetime.strptime(start_date, '%Y-%m-%d')
+                end_date     = datetime.strptime(end_date, '%Y-%m-%d')
+                data_delta   = timedelta(days=1)
+                new_end_date = end_date + data_delta
+                q &= Q(sales_process__estimate__created_at__range=[start_date, new_end_date])
             quote_notifications = QuoteNotification.objects.filter(q).distinct()[offset:offset+limit]
             branches            = Branch.objects.all()
             # 전체 지점 이름과 지점의 속해 있는데 전체 직원 이름
@@ -305,10 +333,10 @@ class EstimateDetailView(View):
                 return JsonResponse({'results':results}, status=200)
                 
         except Estimate.DoesNotExist:
-            return JsonResponse({'Message': 'ESTIMATE_DOES_NOT_EXIST'}, status = 404)
+            return JsonResponse({'message': 'ESTIMATE_DOES_NOT_EXIST'}, status = 404)
         
         except IndexError:
-            return JsonResponse({'Message': 'INVALID_BRANCH'}, status = 404)
+            return JsonResponse({'message': 'INVALID_BRANCH'}, status = 404)
 
 class ConsultingView(View):
     @admin_login_decorator
@@ -317,13 +345,13 @@ class ConsultingView(View):
         try :
             data        = json.loads(request.body)
             estimate_id = data['estimate_id']
-            dealer_id = data['dealer_id']
+            dealer_id   = data['dealer_id']
             # 이미 진행 되고 있는 컨설팅이 있을 경우 에러 처리 / 수정으로 추가 진행 필요
             if Consulting.objects.filter(estimate_id = estimate_id):
-                return JsonResponse({'Message' : 'THE_CONSULTING_ALREADY_EXISTS'}, status=404)
+                return JsonResponse({'message' : 'THE_CONSULTING_ALREADY_EXISTS'}, status=404)
             # [transaction] 여러개의 create 처리 시 한건 이라도 처리 되지 않을 경우 전체 처리 X
             with transaction.atomic():
-                Consulting.objects.create(
+                consulting = Consulting.objects.create(
                     estimate_id = estimate_id,
                     dealer_id   = dealer_id,
                 )
@@ -334,8 +362,9 @@ class ConsultingView(View):
                 sales_process.dealer_assigned = datetime.now()
                 sales_process.save()
                 #딜러 알림 끄기
-                quote_notification = sales_process.quotenotification_set.all()[0]
+                quote_notification               = sales_process.quotenotification_set.all()[0]
                 quote_notification.dealer_assign = True
+                quote_notification.branch_id     = consulting.dealer.branch.id
                 quote_notification.save()
                 # 고객 알림 작성
                 UserNotification.objects.create(
@@ -344,12 +373,13 @@ class ConsultingView(View):
                     read          = False
                 )
                 
-            return JsonResponse({'Message': 'SUCCESS'}, status=200)
+            return JsonResponse({'message': 'SUCCESS'}, status=200)
+        
         except transaction.TransactionManagementError:
-            return JsonResponse({'Message': 'TransactionManagementError'}, status=400)
+            return JsonResponse({'message': 'TransactionManagementError'}, status=400)
         
         except KeyError: 
-            return JsonResponse({'Message' : 'KEY_ERROR'}, status=400)
+            return JsonResponse({'message' : 'KEY_ERROR'}, status=400)
         
     # 상담 내용 작성 및 판매 프로세스 변경
     @admin_login_decorator
@@ -363,7 +393,7 @@ class ConsultingView(View):
             if process_state == "딜러배정":
                 sales_process = SalesProcess.objects.get(estimate_id = estimate_id)
                 if not sales_process.dealer_consulting and sales_process.selling_requested and sales_process.selling_completed == "null".exists():
-                    return JsonResponse({'Message' : 'INVALID_SALES_PROCESS'}, status=404)
+                    return JsonResponse({'message' : 'INVALID_SALES_PROCESS'}, status=404)
                 pass
             
             if process_state == "방문상담":
@@ -427,13 +457,13 @@ class ConsultingView(View):
             consulting.content = data.get('content', consulting.content)
             consulting.save()
             
-            return JsonResponse({'Message': 'SUCCESS'}, status=200)
+            return JsonResponse({'message': 'SUCCESS'}, status=200)
         # 기본 키에러
         except KeyError: 
-            return JsonResponse({'Message' : 'KEY_ERROR'}, status=400)
+            return JsonResponse({'message' : 'KEY_ERROR'}, status=400)
         
         except transaction.TransactionManagementError:
             return JsonResponse({'message': 'TransactionManagementError'}, status=400)
         # 등록되어 있는 컨설팅이 없거나, 지정 된 딜러가 아닐 경우 에러처리
         except Consulting.DoesNotExist:
-            return JsonResponse({'Message': 'CONSULTING_DOES_NOT_EXIST'}, status = 404)
+            return JsonResponse({'message': 'CONSULTING_DOES_NOT_EXIST'}, status = 404)
