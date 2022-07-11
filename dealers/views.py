@@ -129,10 +129,7 @@ class EstimateListView(View):
             # 해당 지점의 Sales Consultant 이름
             info = {
                 'branch' : dealer.branch.name,
-                'dealers': [{
-                    'dealer_id'  : dealer.id,
-                    'dealer_name': dealer.name,
-                }for dealer in dealer.branch.dealer_set.all()]
+                'dealer': [dealer.name for dealer in dealer.branch.dealer_set.all()]
             }
             
             results = [{
@@ -181,11 +178,8 @@ class EstimateListView(View):
             branches            = Branch.objects.all()
             # 전체 지점 이름과 지점의 속해 있는데 전체 직원 이름
             info = [{
-                'branch' : branch.name,
-                'dealers': [{
-                    'dealer_id'  : dealer.id,
-                    'dealer_name': dealer.name,
-                }for dealer in branch.dealer_set.all()]
+                'branch': branch.name,
+                'dealer': [dealer.name for dealer in branch.dealer_set.all()]
             }for branch in branches]
             
             results = [{
