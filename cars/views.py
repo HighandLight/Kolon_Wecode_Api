@@ -7,12 +7,11 @@ from django.views     import View
 from django.db.models import Sum
 from django.db        import transaction
 
-from kolon_wecode.settings  import SECRET_KEY, ALGORITHM, KAKAO_APPKEY
+from kolon_wecode.settings  import SECRET_KEY, ALGORITHM, KAKAO_APPKEY, KAKAO_REDIRECT_URI
 from cars.models            import Car, InsuranceHistory, TransactionHistory
 from estimates.models       import Estimate
 from testcar.models         import TestCar
 from cores.utils            import login_decorator
-
 
 class SignInView(View):
     # 로그인
@@ -55,6 +54,7 @@ class SignInView(View):
         # 우리 데이터에 해당 차량번호 등록되어 있지 않을 경우 에러메세지
         except Car.DoesNotExist:
             return JsonResponse({'message': 'MY_CAR_NOT_PRESENT_CAR_NUMBER'}, status = 400)
+        
 class SignUpView(View):
     #회원가입
     def post(self, request):
@@ -127,13 +127,13 @@ class KakaoLoginView(View):
             data = {
                 "grant_type"  : "authorization_code",
                 "client_id"   : KAKAO_APPKEY,
-                "redirect_uri": "http://127.0.0.1:8000/cars/kakao/callback",
+                "redirect_uri": KAKAO_REDIRECT_URI,
                 "code"        : request.GET.get("code")
             }
             
             access_token = requests.post(kakao_token_api, data=data, timeout = 1).json().get('access_token')
             user_info    = requests.get('https://kapi.kakao.com/v2/user/me', headers={"Authorization": f"Bearer {access_token}"}, timeout = 1).json()
-            kakao_id          = user_info["id"]
+            kakao_id     = user_info["id"]
             
             return JsonResponse({"message" : "SUCCESS", "kakao_id" : kakao_id}, status=200)
             
@@ -161,9 +161,8 @@ class Car365APIView(View):
     # 추후 국토부 API사용시 불러올 정보를 가정한 내용
     def get(self, request): 
         try :
-            data       = json.loads(request.body)
-            car_number = data['car_number']
-            owner      = data['owner']
+            car_number = request.GET['car_number']
+            owner      = request.GET['owner']
             
             # 처음 등록한 차량번호와 다른 차량번호 (이미 DB에 등록되어 있는 정보) 입력 방지를 위한 에러처리
             if Car.objects.filter(car_number = car_number, owner = owner):
@@ -195,13 +194,13 @@ class Car365APIView(View):
                 'transaction_history'    : [history.history for history in testcar.testtransactionhistory_set.all()]
             }
             
-            return JsonResponse({'results': results}, status=200)
+            return JsonResponse({'message': 'SUCCESS', 'results': results}, status=200)
         
         except KeyError: 
             return JsonResponse({'message' : 'KEY_ERROR'}, status=400)
 
 class CarInformationView(View):
-    # 회원가입 이후 등록된 내 차량 정보 확인
+    # 회원가입 이후 등록된 내 차량 정보 확인              
     @login_decorator
     def get(self, request): 
         car = request.car

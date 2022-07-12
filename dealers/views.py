@@ -268,7 +268,7 @@ class EstimateDetailView(View):
                             'process_state'    : sales_process.process_state
                         }for sales_process in estimate.salesprocess_set.all()],
                         'consulting':[{
-                            'breanch': consulting.dealer.branch.name,
+                            'branch': consulting.dealer.branch.name,
                             'dealer' : consulting.dealer.name,
                             'content': consulting.content
                         } for consulting in estimate.consulting_set.all()]
@@ -326,7 +326,7 @@ class EstimateDetailView(View):
                         'termination'      : sales_process.termination,
                     }for sales_process in estimate.salesprocess_set.all()],
                     'consulting':[{
-                        'breanch': consulting.dealer.branch.name,
+                        'branch': consulting.dealer.branch.name,
                         'dealer' : consulting.dealer.name,
                         'content': consulting.content
                     } for consulting in estimate.consulting_set.all()]

@@ -17,29 +17,6 @@ class EstimateView(View):
         try :
             data                     = json.loads(request.body)
             car                      = request.car
-            # process_state : "주행거리"
-            mileage                  = data['mileage']
-            # process_state : "추가옵션"
-            sunroof                  = data['sunroof']
-            navigation               = data['navigation']
-            ventilation_seat         = data['ventilation_seat']
-            heated_seat              = data['heated_seat']
-            electric_seat            = data['electric_seat']
-            smart_key                = data['smart_key']
-            leather_seat             = data['leather_seat']
-            electric_folding_mirror  = data['electric_folding_mirror']
-            # process_state : "추가입력"
-            accident_status          = data['accident_status']
-            spare_key                = data['spare_key']
-            wheel_scratch            = data['wheel_scratch']
-            outer_plate_scratch      = data['outer_plate_scratch']
-            other_maintenance_repair = data['other_maintenance_repair']
-            other_special            = data['other_special']
-            # process_state : "사진등록"
-            # process_state : "개인정보"
-            address                  = data['address']
-            phone_number             = data['phone_number']
-            # process_state : "신청완료"
             process_state            = data['process_state']
             
             # 등록되어 있는 견적서가 이미 있을 경우 에러처리 [이전에 미리 확인 하나 서버 오류 등 발생 시 에러처리]
@@ -48,23 +25,6 @@ class EstimateView(View):
             # [transaction] 여러개의 create 처리 시 한건 이라도 처리 되지 않을 경우 전체 처리 X
             Estimate.objects.create(
                 car_id                   = car.id,
-                mileage                  = mileage,
-                address                  = address,
-                phone_number             = phone_number,
-                sunroof                  = sunroof,
-                navigation               = navigation,
-                ventilation_seat         = ventilation_seat,
-                heated_seat              = heated_seat,
-                electric_seat            = electric_seat,
-                smart_key                = smart_key,
-                leather_seat             = leather_seat,
-                electric_folding_mirror  = electric_folding_mirror,
-                accident_status          = accident_status,
-                spare_key                = spare_key,
-                wheel_scratch            = wheel_scratch,
-                outer_plate_scratch      = outer_plate_scratch,
-                other_maintenance_repair = other_maintenance_repair,
-                other_special            = other_special,
                 process_state            = process_state,
             )
             
