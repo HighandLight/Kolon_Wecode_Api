@@ -152,6 +152,7 @@ class EstimateListView(View):
                 'selling_requested'    : quote_notification.sales_process.selling_requested,
                 'selling_completed'    : quote_notification.sales_process.selling_completed,
                 'termination'          : quote_notification.sales_process.termination,
+                'process_state'        : quote_notification.sales_process.process_state
             }for quote_notification in quote_notifications]
             
             return JsonResponse({'info': info, 'results': results}, status=200)
@@ -202,6 +203,7 @@ class EstimateListView(View):
                 'selling_requested'    : quote_notification.sales_process.selling_requested,
                 'selling_completed'    : quote_notification.sales_process.selling_completed,
                 'termination'          : quote_notification.sales_process.termination,
+                'process_state'        : quote_notification.sales_process.process_state
             }for quote_notification in quote_notifications]
             
             return JsonResponse({'info': info, 'results': results}, status=200)
@@ -263,6 +265,7 @@ class EstimateDetailView(View):
                             'selling_requested': sales_process.selling_requested,
                             'selling_completed': sales_process.selling_completed,
                             'termination'      : sales_process.termination,
+                            'process_state'    : sales_process.process_state
                         }for sales_process in estimate.salesprocess_set.all()],
                         'consulting':[{
                             'breanch': consulting.dealer.branch.name,

@@ -218,6 +218,7 @@ class CarInformationView(View):
             'first_registration_year': car.first_registration_year,
             'engine'                 : car.engine,
             'transmission'           : car.transmission,
+            'factory_price'          : car.factory_price,
             'insurance_history'      : [history.history for history in car.insurancehistory_set.all()],
             'transaction_history'    : [history.history for history in car.transactionhistory_set.all()]
         }
