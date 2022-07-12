@@ -26,12 +26,11 @@ class UserNotificationView(View):
         notifications = car.estimate_set.all()[0].salesprocess_set.all()[0].usernotification_set.all()
         
         results = [{
-            'notification_id': notification.id,
-            'car_number'     : notification.sales_process.estimate.car.car_number,
-            'car_number'     : notification.sales_process.estimate.car.car_number,
-            'content'        : notification.content,
-            'read'           : notification.read,
-            'create_at'      : notification.created_at,
+            'id'        : notification.id,
+            'car_number': notification.sales_process.estimate.car.car_number,
+            'content'   : notification.content,
+            'read'      : notification.read,
+            'create_at' : notification.created_at,
         }for notification in notifications]
         
         return JsonResponse({'results': results}, status=200)
@@ -46,4 +45,3 @@ class UserNotificationView(View):
         
         except IndexError:
             return JsonResponse({'message': 'NO_NOTIFICATIONS'}, status = 404)
-
