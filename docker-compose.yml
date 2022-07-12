@@ -1,29 +1,9 @@
 version: '3.8'
 
-# volumes:
-#   selling_my_car:
-
 services:
-  # web:
-  #   image: ${DOCKER_REGISTRY_F}:main
-  #   restart: always
-  #   env_file:
-  #     - '.env'
-  #   ports:
-  #     - ${API_PORT}:3000
-  #   depends_on:
-  #     - api
-  api:
-    image: ${DOCKER_REGISTRY_B}:main
-    restart: always
-    env_file:
-      - .env
-    ports:
-      - ${API_PORT}:8000
-    depends_on:
-      - db
   db:
     image: mariadb
+    container_name: selling_my_car_db
     restart: always
     env_file:
       - .env
@@ -34,6 +14,27 @@ services:
       - --collation-server=utf8mb4_general_ci
       - --skip-character-set-client-handshake
     volumes:
-      - /Users/ddino/project/test:/var/lib/mysql/
+      - ${PWD}/database:/var/lib/mysql
     ports:
       - '${DB_PORT}:3306'
+  api:
+    image: ${DOCKER_REGISTRY_B}:main
+    container_name: selling_my_car_api
+    restart: always
+    env_file:
+      - .env
+    ports:
+      - ${API_PORT}:8080
+    volumes: 
+      - ${PWD}/api:/home
+    depends_on:
+      - db
+  # web:
+  #   image: ${DOCKER_REGISTRY_F}:main
+  #   restart: always
+  #   env_file:
+  #     - '.env'
+  #   ports:
+  #     - ${API_PORT}:3000
+  #   depends_on:
+  #     - api
