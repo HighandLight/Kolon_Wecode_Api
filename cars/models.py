@@ -6,7 +6,7 @@ class Car(TimeStampModel):
     owner                   = models.CharField(max_length = 15)
     car_number              = models.CharField(max_length = 15, unique = True)
     phone_number            = models.CharField(max_length = 20)
-    kakao_id                = models.BigIntegerField(null=True)
+    kakao_id                = models.BigIntegerField(null=True, unique = True)
     car_name                = models.CharField(max_length = 50)
     trim                    = models.CharField(max_length = 50)
     body_shape              = models.CharField(max_length = 50)

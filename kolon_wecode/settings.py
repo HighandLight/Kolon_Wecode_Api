@@ -1,6 +1,12 @@
 import os
+import pymysql
 import environ
-from pathlib        import Path
+
+from pathlib import Path
+
+pymysql.install_as_MySQLdb()
+
+pymysql.install_as_MySQLdb()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -21,14 +27,16 @@ environ.Env.read_env(
     env_file=os.path.join(BASE_DIR, '.env')
 )
 
-# ALGORITHM = env('ALGORITHM')
+ALGORITHM = env('ALGORITHM')
 
 SECRET_KEY = env('SECRET_KEY')
 
 DEBUG = env('DEBUG')
 
-# ALLOWED_HOSTS = env('ALLOWED_HOSTS')
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = env('ALLOWED_HOSTS')
+
+KAKAO_APPKEY = env('KAKAO_APPKEY')
+KAKAO_REDIRECT_URI = env('KAKAO_REDIRECT_URI')
 
 DATABASES = {
     'default': {

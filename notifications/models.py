@@ -25,7 +25,7 @@ class QuoteNotification(TimeStampModel):
 
 class UserNotification(TimeStampModel):
     sales_process = models.ForeignKey('notifications.SalesProcess', on_delete = models.CASCADE)
-    name          = models.CharField(max_length = 50)
+    content       = models.CharField(max_length = 100)
     read          = models.BooleanField()
 
     class Meta:

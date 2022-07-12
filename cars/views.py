@@ -2,19 +2,16 @@ import json, jwt, requests
 
 from datetime import datetime, timedelta
 
-from django.http import JsonResponse
-from django.views import View
-from django.conf import settings
+from django.http      import JsonResponse
+from django.views     import View
 from django.db.models import Sum
-from django.db import transaction
+from django.db        import transaction
 
-from cars.models import Car, InsuranceHistory, TransactionHistory
-from estimates.models import Estimate
-from testcar.models import TestCar
-from cars.utils import (
-    login_decorator,
-    validate_car_number,
-)
+from kolon_wecode.settings  import SECRET_KEY, ALGORITHM, KAKAO_APPKEY
+from cars.models            import Car, InsuranceHistory, TransactionHistory
+from estimates.models       import Estimate
+from testcar.models         import TestCar
+from cores.utils            import login_decorator
 
 
 class SignInView(View):
@@ -36,28 +33,28 @@ class SignInView(View):
                 if estimate.process_state == '신청완료':
                     # 견적서 신청 완료 일 경우
                     return JsonResponse({
-                        'Message'      : 'SUCCESS_ESTIMATE_COMPLETION',
+                        'message'      : 'SUCCESS_ESTIMATE_COMPLETION',
                         'estimate_id'  : estimate.id,
                         'process_state': estimate.process_state,
-                        'ACCESS_TOKEN' : access_token
+                        'access_token' : access_token
                     }, status=200)
                 else:
                     # 견적서 중 일 경우
                     return JsonResponse({
-                        'Message'      : 'SUCCESS_ESTIMATE_REGISTERING',
+                        'message'      : 'SUCCESS_ESTIMATE_REGISTERING',
                         'estimate_id'  : estimate.id,
                         'process_state': estimate.process_state,
-                        'ACCESS_TOKEN' : access_token
+                        'access_token' : access_token
                     }, status=200)
                     
         #회원가입 만 진행 후 작성 한 견적서가 없을 경우 했을 경우
         except Estimate.DoesNotExist:
-            return JsonResponse({'Message': 'SUCCESS_ESTIMATE_REQUIRED', 'ACCESS_TOKEN' : access_token}, status = 200)
+            return JsonResponse({'message': 'SUCCESS_ESTIMATE_REQUIRED', 'access_token' : access_token}, status = 200)
         except KeyError: 
-            return JsonResponse({'Message': 'KEY_ERROR'}, status = 400)
+            return JsonResponse({'message': 'KEY_ERROR'}, status = 400)
         # 우리 데이터에 해당 차량번호 등록되어 있지 않을 경우 에러메세지
         except Car.DoesNotExist:
-            return JsonResponse({'Message': 'MY_CAR_NOT_PRESENT_CAR_NUMBER'}, status = 400)
+            return JsonResponse({'message': 'MY_CAR_NOT_PRESENT_CAR_NUMBER'}, status = 400)
 class SignUpView(View):
     #회원가입
     def post(self, request):
@@ -82,7 +79,7 @@ class SignUpView(View):
             
             # 처음 등록한 차량번호와 다른 차량번호 입력 방지를 위한 에러처리
             if Car.objects.filter(car_number = car_number, owner = owner):
-                return JsonResponse({'Message' : 'THE_CAR_NUMBER_AND_OWNER_ALREADY_EXISTS'}, status=404)
+                return JsonResponse({'message' : 'THE_CAR_NUMBER_AND_OWNER_ALREADY_EXISTS'}, status=404)
             
             # [transaction] 여러개의 create 처리 시 한건 이라도 처리 되지 않을 경우 전체 처리 X
             with transaction.atomic():
@@ -115,13 +112,13 @@ class SignUpView(View):
                 # 이후 처리를 위해 토큰 같이 발급
                 access_token = jwt.encode({'id' : car.id}, SECRET_KEY, ALGORITHM)
                 
-                return JsonResponse({'Message': 'SUCCESS', 'ACCESS_TOKEN': access_token}, status=200)
+                return JsonResponse({'message': 'SUCCESS', 'access_token': access_token}, status=200)
         # [transaction] 에러처리
         except transaction.TransactionManagementError:
-            return JsonResponse({'Message': 'TransactionManagementError'}, status=400)
+            return JsonResponse({'message': 'TransactionManagementError'}, status=400)
         
         except KeyError: 
-            return JsonResponse({'Message' : 'KEY_ERROR'}, status=400)
+            return JsonResponse({'message' : 'KEY_ERROR'}, status=400)
 
 class KakaoLoginView(View):
     def get(self, request):
@@ -129,33 +126,36 @@ class KakaoLoginView(View):
             kakao_token_api = "https://kauth.kakao.com/oauth/token"
             data = {
                 "grant_type"  : "authorization_code",
-                "client_id"   : settings.KAKAO_APPKEY,
+                "client_id"   : KAKAO_APPKEY,
                 "redirect_uri": "http://127.0.0.1:8000/cars/kakao/callback",
                 "code"        : request.GET.get("code")
             }
-
+            
             access_token = requests.post(kakao_token_api, data=data, timeout = 1).json().get('access_token')
             user_info    = requests.get('https://kapi.kakao.com/v2/user/me', headers={"Authorization": f"Bearer {access_token}"}, timeout = 1).json()
             kakao_id          = user_info["id"]
-            kakao_name        = user_info["properties"]["nickname"]
-            kakao_email       = user_info["kakao_account"]["email"]
             
-
-            user, is_created = Car.objects.get_or_create(
-                defaults = {
-                    "kakao_id"     : kakao_id,
-                }
-            )
-            access_token = jwt.encode({"id" : user.id}, settings.SECRET_KEY, algorithm = settings.ALGORITHM)
- 
-            if is_created:
-                return JsonResponse({"message" : "ACCOUNT CREATED", "token" : access_token}, status=201)
-                
-            else:
-                return JsonResponse({"message" : "SIGN IN SUCCESS", "token" : access_token}, status=200)
+            return JsonResponse({"message" : "SUCCESS", "kakao_id" : kakao_id}, status=200)
             
         except KeyError:
             return JsonResponse({'message' : "KEY_ERROR"}, status=400) 
+
+class CarNumberCheckView(View):
+    # DB에 차량번호 조회만 진행 
+    def post(self, request):
+        try:
+            data       = json.loads(request.body)
+            car_number = data['car_number']
+            
+            Car.objects.get(car_number = car_number)
+            
+            return JsonResponse({'Message': 'THE_CAR_NUMBER_ALREADY'}, status=200)
+            
+        except KeyError: 
+            return JsonResponse({'Message': 'KEY_ERROR'}, status = 400)
+        # 우리 데이터에 해당 차량번호 있지 않을 경우 에러메세지 -> 회원가입 유도 필요
+        except Car.DoesNotExist:
+            return JsonResponse({'Message': 'MY_CAR_NOT_PRESENT_CAR_NUMBER'}, status = 400)
 
 class Car365APIView(View):
     # 추후 국토부 API사용시 불러올 정보를 가정한 내용
@@ -167,11 +167,11 @@ class Car365APIView(View):
             
             # 처음 등록한 차량번호와 다른 차량번호 (이미 DB에 등록되어 있는 정보) 입력 방지를 위한 에러처리
             if Car.objects.filter(car_number = car_number, owner = owner):
-                return JsonResponse({'Message' : 'THE_CAR_NUMBER_AND_OWNER_ALREADY_EXISTS'}, status=404)
+                return JsonResponse({'message' : 'THE_CAR_NUMBER_AND_OWNER_ALREADY_EXISTS'}, status=404)
             
             #차량번호와 소유자명이 다를 경우 에러처리
             if not TestCar.objects.filter(number = car_number, owner = owner).exists():
-                return JsonResponse({'Message' : 'INVALID_CAR_NUMBER_OR_OWNER'}, status=404)
+                return JsonResponse({'message' : 'INVALID_CAR_NUMBER_OR_OWNER'}, status=404)
             
             # 추후 국토부 API를 가정한 DB
             testcar = TestCar.objects.get(number = car_number, owner = owner)
@@ -198,7 +198,7 @@ class Car365APIView(View):
             return JsonResponse({'results': results}, status=200)
         
         except KeyError: 
-            return JsonResponse({'Message' : 'KEY_ERROR'}, status=400)
+            return JsonResponse({'message' : 'KEY_ERROR'}, status=400)
 
 class CarInformationView(View):
     # 회원가입 이후 등록된 내 차량 정보 확인
@@ -218,6 +218,7 @@ class CarInformationView(View):
             'first_registration_year': car.first_registration_year,
             'engine'                 : car.engine,
             'transmission'           : car.transmission,
+            'factory_price'          : car.factory_price,
             'insurance_history'      : [history.history for history in car.insurancehistory_set.all()],
             'transaction_history'    : [history.history for history in car.transactionhistory_set.all()]
         }
@@ -234,7 +235,7 @@ class CarInformationView(View):
         car.transactionhistory_set.all().delete()
         car.delete()
         
-        return JsonResponse({'Message': 'NO_CONTENT'}, status=200)
+        return JsonResponse({'message': 'NO_CONTENT'}, status=200)
 
 class CarPriceView(View):
     @login_decorator
@@ -252,7 +253,7 @@ class CarPriceView(View):
         cars_2 = TestCar.objects.filter\
             (car_name = request.car.car_name, trim = request.car.trim, model_year = request.car.model_year)
         price = cars_2.aggregate(Sum('transaction_price'))
-        
+        # 차량 예상가격
         estimated_price = price['transaction_price__sum'] / len(cars_2)
         
         # 차량시세 그래프 용 차량이름, 트림 개수 / 추후 x개 이하 일 경우 데이터가 부족하다는 문구 띄울 예정
