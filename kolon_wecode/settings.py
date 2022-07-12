@@ -1,12 +1,12 @@
 import os
-import pymysql
+# import pymysql
 import environ
 
 from pathlib import Path
 
-pymysql.install_as_MySQLdb()
+# pymysql.install_as_MySQLdb()
 
-pymysql.install_as_MySQLdb()
+# pymysql.install_as_MySQLdb()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -30,10 +30,11 @@ environ.Env.read_env(
 ALGORITHM = env('ALGORITHM')
 
 SECRET_KEY = env('SECRET_KEY')
-
+KAKAO_APPKEY = env('KAKAO_APPKEY')
 DEBUG = env('DEBUG')
 
 ALLOWED_HOSTS = env('ALLOWED_HOSTS')
+# ALLOWES_HOSTS = ['*']
 
 KAKAO_APPKEY = env('KAKAO_APPKEY')
 KAKAO_REDIRECT_URI = env('KAKAO_REDIRECT_URI')
@@ -123,7 +124,7 @@ USE_I18N = True
 
 USE_L10N = True
 
-USE_TZ = False
+USE_TZ   = False
 
 STATIC_URL = 'static/'
 
@@ -133,8 +134,8 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 APPEND_SLASH = False
 
 ##CORS
-CORS_ORIGIN_ALLOW_ALL=True   #모든 cors 관련 요청에 대해 열어두겠다. 
-CORS_ALLOW_CREDENTIALS = True   
+CORS_ORIGIN_ALLOW_ALL  = True   #모든 cors 관련 요청에 대해 열어두겠다.
+CORS_ALLOW_CREDENTIALS = True
 
 CORS_ALLOW_METHODS = (#서버에서 받을 수 있는 요청 허용범위 결정할 수 있어..
     'DELETE',
@@ -155,4 +156,5 @@ CORS_ALLOW_HEADERS = (
     'user-agent',
     'x-csrftoken',
     'x-requested-with',
+    'access_token'
 )

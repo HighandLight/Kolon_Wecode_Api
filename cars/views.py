@@ -7,7 +7,7 @@ from django.views     import View
 from django.db.models import Sum
 from django.db        import transaction
 
-from kolon_wecode.settings  import SECRET_KEY, ALGORITHM, KAKAO_APPKEY
+from kolon_wecode.settings  import SECRET_KEY, ALGORITHM, KAKAO_APPKEY, KAKAO_REDIRECT_URI
 from cars.models            import Car, InsuranceHistory, TransactionHistory
 from estimates.models       import Estimate
 from testcar.models         import TestCar
@@ -127,13 +127,13 @@ class KakaoLoginView(View):
             data = {
                 "grant_type"  : "authorization_code",
                 "client_id"   : KAKAO_APPKEY,
-                "redirect_uri": "http://127.0.0.1:8000/cars/kakao/callback",
+                "redirect_uri": KAKAO_REDIRECT_URI,
                 "code"        : request.GET.get("code")
             }
-            
-            access_token = requests.post(kakao_token_api, data=data, timeout = 1).json().get('access_token')
-            user_info    = requests.get('https://kapi.kakao.com/v2/user/me', headers={"Authorization": f"Bearer {access_token}"}, timeout = 1).json()
-            kakao_id          = user_info["id"]
+
+            access_token = requests.post(kakao_token_api, data=data, timeout = 5).json().get('access_token')
+            user_info = requests.get('https://kapi.kakao.com/v2/user/me', headers={"Authorization": f"Bearer {access_token}"}, timeout = 1).json()
+            kakao_id  = user_info["id"]
             
             return JsonResponse({"message" : "SUCCESS", "kakao_id" : kakao_id}, status=200)
             
