@@ -127,10 +127,10 @@ class EstimateListView(View):
             
             quote_notifications = QuoteNotification.objects.filter(q).distinct().order_by('-id')[offset:offset+limit]
             # 해당 지점의 Sales Consultant 이름
-            info = {
+            info = [{
                 'branch' : dealer.branch.name,
                 'dealer': [dealer.name for dealer in dealer.branch.dealer_set.all()]
-            }
+            }]
             
             results = [{
                 'estimate_id'          : quote_notification.sales_process.estimate.id,

@@ -149,13 +149,13 @@ class CarNumberCheckView(View):
             
             Car.objects.get(car_number = car_number)
             
-            return JsonResponse({'Message': 'THE_CAR_NUMBER_ALREADY'}, status=200)
+            return JsonResponse({'message': 'THE_CAR_NUMBER_ALREADY'}, status=200)
             
         except KeyError: 
-            return JsonResponse({'Message': 'KEY_ERROR'}, status = 400)
+            return JsonResponse({'message': 'KEY_ERROR'}, status = 400)
         # 우리 데이터에 해당 차량번호 있지 않을 경우 에러메세지 -> 회원가입 유도 필요
         except Car.DoesNotExist:
-            return JsonResponse({'Message': 'MY_CAR_NOT_PRESENT_CAR_NUMBER'}, status = 400)
+            return JsonResponse({'message': 'MY_CAR_NOT_PRESENT_CAR_NUMBER'}, status = 400)
 
 class Car365APIView(View):
     # 추후 국토부 API사용시 불러올 정보를 가정한 내용
