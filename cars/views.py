@@ -265,10 +265,10 @@ class CarPriceView(View):
         
         model_year_index = model_year.index(max(model_year))
         transaction_price_index = transaction_price.index(max(transaction_price))
-        max_result = [model_year[model_year_index], transaction_price[transaction_price_index]]
+        max_result = [model_year[model_year_index] + 1, transaction_price[transaction_price_index]]
         
         model_year_index = model_year.index(min(model_year))
         transaction_price_index = transaction_price.index(min(transaction_price))
-        min_result = [model_year[model_year_index], transaction_price[transaction_price_index]]
+        min_result = [model_year[model_year_index] - 1, transaction_price[transaction_price_index]]
 
         return JsonResponse({'estimated_price': int(estimated_price), 'transaction_count' : count, 'transaction': transaction, 'max_result' : max_result, 'min_result' : min_result}, status=200)
