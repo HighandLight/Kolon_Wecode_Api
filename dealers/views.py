@@ -218,6 +218,7 @@ class EstimateDetailView(View):
                 estimate = Estimate.objects.get(id=estimate_id)
                 branch_check = estimate.salesprocess_set.all()[0].quotenotification_set.filter(branch_id=dealer.branch_id)[0]
                 if branch_check: 
+                    info = [{'dealer': [dealer.name for dealer in dealer.branch.dealer_set.all()]}]
                     results = {
                         'estimate_id'             : estimate.id,
                         'owner'                   : estimate.car.owner,
@@ -267,16 +268,17 @@ class EstimateDetailView(View):
                             'termination'      : sales_process.termination,
                             'process_state'    : sales_process.process_state
                         }for sales_process in estimate.salesprocess_set.all()],
+                        'branch'               : estimate.salesprocess_set.all()[0].quotenotification_set.all()[0].branch.name,
                         'consulting':[{
-                            'branch': consulting.dealer.branch.name,
                             'dealer' : consulting.dealer.name,
                             'content': consulting.content
                         } for consulting in estimate.consulting_set.all()]
                     }
-                    return JsonResponse({'results':results}, status=200)
+                    return JsonResponse({'info': info, 'results': results}, status=200)
             # Showroom Manager일 경우 지점 상관없이 확인 가능
             if dealer.level == "Showroom Manager":
                 estimate = Estimate.objects.get(id=estimate_id)
+                info = [{'dealer': [dealer.name for dealer in dealer.branch.dealer_set.all()]}]
                 results = {
                     'estimate_id'             : estimate.id,
                     'owner'                   : estimate.car.owner,
@@ -325,13 +327,13 @@ class EstimateDetailView(View):
                         'selling_completed': sales_process.selling_completed,
                         'termination'      : sales_process.termination,
                     }for sales_process in estimate.salesprocess_set.all()],
+                    'branch'               : estimate.salesprocess_set.all()[0].quotenotification_set.all()[0].branch.name,
                     'consulting':[{
-                        'branch': consulting.dealer.branch.name,
                         'dealer' : consulting.dealer.name,
                         'content': consulting.content
                     } for consulting in estimate.consulting_set.all()]
                 }
-                return JsonResponse({'results':results}, status=200)
+                return JsonResponse({'info': info, 'results': results}, status=200)
                 
         except Estimate.DoesNotExist:
             return JsonResponse({'message': 'ESTIMATE_DOES_NOT_EXIST'}, status = 404)

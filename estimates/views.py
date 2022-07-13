@@ -196,7 +196,7 @@ class EstimateImageView(View):
             'image': [{
                 'image_id'  : estimatecarimage.id,
                 'image_info': estimatecarimage.image_info,
-                'image'     : str(estimatecarimage.image),
+                'image'     : 'http://10.133.5.6:8000/' + str(estimatecarimage.image),
             } for estimatecarimage in estimate.estimatecarimage_set.all()],
         }
         
@@ -256,7 +256,7 @@ class EstimateDetailView(View):
                     'process_state'           : estimate.process_state,
                     'image': [{
                         'image_info': estimatecarimage.image_info,
-                        'image'     : str(estimatecarimage.image),
+                        'image'     : 'http://10.133.5.8:8000/' + str(estimatecarimage.image),
                     } for estimatecarimage in estimate.estimatecarimage_set.all()]
                 } for estimate in car.estimate_set.all()]
             }

@@ -12,6 +12,8 @@ env = environ.Env(
     # set casting(type), default value
     DEBUG=(bool, False),
     SECRET_KEY=(str, 'SECRET_KEY'),
+    KAKAO_APPKEY=(str, 'KAKAO_APPKEY'),
+    KAKAO_REDIRECT_URI=(str, 'KAKAO_REDIRECT_URI'), 
     BASE_URL=(str, 'localhost:8000'),
     ALLOWED_HOSTS=(list, []),
     DB_NAME=(str, 'DB_NAME'),
@@ -25,10 +27,10 @@ environ.Env.read_env(
     env_file=os.path.join(BASE_DIR, '.env')
 )
 
-ALGORITHM = env('ALGORITHM')
+ALGORITHM = 'HS256'
 
 SECRET_KEY = env('SECRET_KEY')
-KAKAO_APPKEY = env('KAKAO_APPKEY')
+
 DEBUG = env('DEBUG')
 
 ALLOWED_HOSTS = env('ALLOWED_HOSTS')
