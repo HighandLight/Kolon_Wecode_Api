@@ -4,8 +4,6 @@ services:
   selling_my_car_db:
     image: mariadb
     restart: always
-    env_file:
-      - .env_docker
     command:
       - --default-authentication-plugin=mysql_native_password
       - --max-allowed-packet=268435456
@@ -33,8 +31,6 @@ services:
   selling_my_car_api:
     image: ${DOCKER_REGISTRY_B}:main
     restart: always
-    env_file:
-      - .env_docker
     ports:
       - ${API_PORT}:8080
     volumes: 
@@ -45,8 +41,6 @@ services:
   selling_my_car_web:
     image: ${DOCKER_REGISTRY_F}:main
     restart: always
-    env_file:
-      - .env_docker
     ports:
       - ${WEB_PORT}:3000
     depends_on:

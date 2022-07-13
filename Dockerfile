@@ -16,4 +16,4 @@ COPY . .
 
 EXPOSE 8000   
 
-ENTRYPOINT /usr/share/entrypoint.sh
+ENTRYPOINT .entrypoint.sh
