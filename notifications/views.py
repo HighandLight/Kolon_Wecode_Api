@@ -11,9 +11,7 @@ class QuoteNotificationView(View):
         notifications = QuoteNotification.objects.filter(branch_id=request.dealer.branch_id, dealer_assign = False)
         
         results = [{
-            'branch'       : notification.branch.name,
             'car_number'   : notification.sales_process.estimate.car.car_number,
-            'dealer_assign': notification.dealer_assign,
         }for notification in notifications]
         
         return JsonResponse({'results': results}, status=200)
