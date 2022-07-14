@@ -64,7 +64,6 @@ INSTALLED_APPS = [
     'testcar',
 ]
 
-
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',

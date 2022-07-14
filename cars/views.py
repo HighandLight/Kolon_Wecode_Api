@@ -121,6 +121,7 @@ class SignUpView(View):
             return JsonResponse({'message' : 'KEY_ERROR'}, status=400)
 
 class KakaoLoginView(View):
+    #카카오 서버로부터 사용자 계정 정보 불러오기
     def get(self, request):
         try:
             kakao_token_api = "https://kauth.kakao.com/oauth/token"
