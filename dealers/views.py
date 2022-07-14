@@ -326,6 +326,7 @@ class EstimateDetailView(View):
                         'selling_requested': sales_process.selling_requested,
                         'selling_completed': sales_process.selling_completed,
                         'termination'      : sales_process.termination,
+                        'process_state'    : sales_process.process_state
                     }for sales_process in estimate.salesprocess_set.all()],
                     'branch'               : estimate.salesprocess_set.all()[0].quotenotification_set.all()[0].branch.name,
                     'consulting':[{
@@ -348,7 +349,9 @@ class ConsultingView(View):
         try :
             data        = json.loads(request.body)
             estimate_id = data['estimate_id']
-            dealer_id   = data['dealer_id']
+            dealer_name = data['dealer_name']
+            
+            dealer = Dealer.objects.get(name = dealer_name)
             # 이미 진행 되고 있는 컨설팅이 있을 경우 에러 처리 / 수정으로 추가 진행 필요
             if Consulting.objects.filter(estimate_id = estimate_id):
                 return JsonResponse({'message' : 'THE_CONSULTING_ALREADY_EXISTS'}, status=404)
@@ -356,7 +359,7 @@ class ConsultingView(View):
             with transaction.atomic():
                 consulting = Consulting.objects.create(
                     estimate_id = estimate_id,
-                    dealer_id   = dealer_id,
+                    dealer_id   = dealer.id,
                 )
                 #판매 프로세스 '딜러 배정 '시간 작성
                 sales_process = SalesProcess.objects.get(estimate_id = estimate_id)
@@ -393,80 +396,152 @@ class ConsultingView(View):
             estimate_id   = data['estimate_id']
             process_state = data['status']
             
-            if process_state == "딜러배정":
-                sales_process = SalesProcess.objects.get(estimate_id = estimate_id)
-                if not sales_process.dealer_consulting and sales_process.selling_requested and sales_process.selling_completed == "null".exists():
-                    return JsonResponse({'message' : 'INVALID_SALES_PROCESS'}, status=404)
-                pass
-            
-            if process_state == "방문상담":
-                #판매 프로세스 '방문상담 '시간 작성
-                sales_process = SalesProcess.objects.get(estimate_id = estimate_id)
+            if dealer.level == "Sales Consultant":
+                # 등록되어 있는 컨설팅이 없거나, 지정 된 딜러가 아닐 경우 에러처리
+                if not Consulting.objects.get(estimate_id = estimate_id, dealer_id = dealer.id):
+                    return JsonResponse({'message' : 'CONSULTING_DOES_NOT_EXIST'}, status=404)
                 
-                sales_process.process_state     = process_state
-                sales_process.dealer_consulting = datetime.now()
-                sales_process.save()
-                # 고객 알림 작성
-                UserNotification.objects.create(
-                    sales_process = sales_process,
-                    content       = '차량 판매를 위해 SC 상담이 진행중입니다.',
-                    read          = False
-                )
+                consulting = Consulting.objects.get(estimate_id = estimate_id, dealer_id = dealer.id)
                 
-            if process_state == "판매요청":
-                #판매 프로세스 '방문상담 '시간 작성
-                sales_process = SalesProcess.objects.get(estimate_id = estimate_id)
+                consulting.content = data.get('content', consulting.content)
+                consulting.save()
                 
-                sales_process.process_state     = process_state
-                sales_process.selling_requested = datetime.now()
-                sales_process.save()
-                # 고객 알림 작성
-                UserNotification.objects.create(
-                    sales_process = sales_process,
-                    content       = '차량의 판매 요청이 진행중입니다.',
-                    read          = False
-                )
+                if process_state == "딜러배정":
+                    sales_process = SalesProcess.objects.get(estimate_id = estimate_id)
+                    if not sales_process.dealer_consulting and sales_process.selling_requested and sales_process.selling_completed == "null".exists():
+                        return JsonResponse({'message' : 'INVALID_SALES_PROCESS'}, status=404)
+                    pass
                 
-            if process_state == "판매완료":
-                #판매 프로세스 '방문상담 '시간 작성
-                sales_process = SalesProcess.objects.get(estimate_id = estimate_id)
+                if process_state == "방문상담":
+                    #판매 프로세스 '방문상담 '시간 작성
+                    sales_process = SalesProcess.objects.get(estimate_id = estimate_id)
+                    
+                    sales_process.process_state     = process_state
+                    sales_process.dealer_consulting = datetime.now()
+                    sales_process.save()
+                    # 고객 알림 작성
+                    UserNotification.objects.create(
+                        sales_process = sales_process,
+                        content       = '차량 판매를 위해 SC 상담이 진행중입니다.',
+                        read          = False
+                    )
+                    
+                if process_state == "판매요청":
+                    #판매 프로세스 '방문상담 '시간 작성
+                    sales_process = SalesProcess.objects.get(estimate_id = estimate_id)
+                    
+                    sales_process.process_state     = process_state
+                    sales_process.selling_requested = datetime.now()
+                    sales_process.save()
+                    # 고객 알림 작성
+                    UserNotification.objects.create(
+                        sales_process = sales_process,
+                        content       = '차량의 판매 요청이 진행중입니다.',
+                        read          = False
+                    )
+                    
+                if process_state == "판매완료":
+                    #판매 프로세스 '방문상담 '시간 작성
+                    sales_process = SalesProcess.objects.get(estimate_id = estimate_id)
+                    
+                    sales_process.process_state     = process_state
+                    sales_process.selling_completed = datetime.now()
+                    sales_process.save()
+                    # 고객 알림 작성
+                    UserNotification.objects.create(
+                        sales_process = sales_process,
+                        content       = '차량이 판매 완료 되었습니다.',
+                        read          = False
+                    )
+                    
+                if process_state == "상담종료":
+                    #판매 프로세스 '상담종료 '시간 작성
+                    sales_process = SalesProcess.objects.get(estimate_id = estimate_id)
+                    
+                    sales_process.process_state = process_state
+                    sales_process.termination   = datetime.now()
+                    sales_process.save()
+                    # 상담 중단 될 경우 
+                    UserNotification.objects.create(
+                        sales_process = sales_process,
+                        content       = '상담이 종료 되었습니다.',
+                        read          = False
+                    )
                 
-                sales_process.process_state     = process_state
-                sales_process.selling_completed = datetime.now()
-                sales_process.save()
-                # 고객 알림 작성
-                UserNotification.objects.create(
-                    sales_process = sales_process,
-                    content       = '차량이 판매 완료 되었습니다.',
-                    read          = False
-                )
+            # Showroom Manager일 경우 지점 상관없이 확인 가능
+            if dealer.level == "Showroom Manager":
+                # 등록되어 있는 컨설팅이 없을 경우 에러처리
+                if not Consulting.objects.get(estimate_id = estimate_id):
+                    return JsonResponse({'message' : 'CONSULTING_DOES_NOT_EXIST'}, status=404)
                 
-            if process_state == "상담종료":
-                #판매 프로세스 '상담종료 '시간 작성
-                sales_process = SalesProcess.objects.get(estimate_id = estimate_id)
+                consulting = Consulting.objects.get(estimate_id = estimate_id)
                 
-                sales_process.process_state = process_state
-                sales_process.termination   = datetime.now()
-                sales_process.save()
-                # 상담 중단 될 경우 
-                UserNotification.objects.create(
-                    sales_process = sales_process,
-                    content       = '상담이 종료 되었습니다.',
-                    read          = False
-                )
-            
-            consulting = Consulting.objects.get(estimate_id = estimate_id, dealer_id = dealer.id)
-            
-            consulting.content = data.get('content', consulting.content)
-            consulting.save()
+                consulting.content = data.get('content', consulting.content)
+                consulting.save()
+                
+                if process_state == "딜러배정":
+                    sales_process = SalesProcess.objects.get(estimate_id = estimate_id)
+                    if not sales_process.dealer_consulting and sales_process.selling_requested and sales_process.selling_completed == "null".exists():
+                        return JsonResponse({'message' : 'INVALID_SALES_PROCESS'}, status=404)
+                    pass
+                
+                if process_state == "방문상담":
+                    #판매 프로세스 '방문상담 '시간 작성
+                    sales_process = SalesProcess.objects.get(estimate_id = estimate_id)
+                    
+                    sales_process.process_state     = process_state
+                    sales_process.dealer_consulting = datetime.now()
+                    sales_process.save()
+                    # 고객 알림 작성
+                    UserNotification.objects.create(
+                        sales_process = sales_process,
+                        content       = '차량 판매를 위해 SC 상담이 진행중입니다.',
+                        read          = False
+                    )
+                    
+                if process_state == "판매요청":
+                    #판매 프로세스 '방문상담 '시간 작성
+                    sales_process = SalesProcess.objects.get(estimate_id = estimate_id)
+                    
+                    sales_process.process_state     = process_state
+                    sales_process.selling_requested = datetime.now()
+                    sales_process.save()
+                    # 고객 알림 작성
+                    UserNotification.objects.create(
+                        sales_process = sales_process,
+                        content       = '차량의 판매 요청이 진행중입니다.',
+                        read          = False
+                    )
+                    
+                if process_state == "판매완료":
+                    #판매 프로세스 '방문상담 '시간 작성
+                    sales_process = SalesProcess.objects.get(estimate_id = estimate_id)
+                    
+                    sales_process.process_state     = process_state
+                    sales_process.selling_completed = datetime.now()
+                    sales_process.save()
+                    # 고객 알림 작성
+                    UserNotification.objects.create(
+                        sales_process = sales_process,
+                        content       = '차량이 판매 완료 되었습니다.',
+                        read          = False
+                    )
+                    
+                if process_state == "상담종료":
+                    #판매 프로세스 '상담종료 '시간 작성
+                    sales_process = SalesProcess.objects.get(estimate_id = estimate_id)
+                    
+                    sales_process.process_state = process_state
+                    sales_process.termination   = datetime.now()
+                    sales_process.save()
+                    # 상담 중단 될 경우 
+                    UserNotification.objects.create(
+                        sales_process = sales_process,
+                        content       = '상담이 종료 되었습니다.',
+                        read          = False
+                    )
             
             return JsonResponse({'message': 'SUCCESS'}, status=200)
         # 기본 키에러
         except KeyError: 
             return JsonResponse({'message' : 'KEY_ERROR'}, status=400)
-        
-        except transaction.TransactionManagementError:
-            return JsonResponse({'message': 'TransactionManagementError'}, status=400)
-        # 등록되어 있는 컨설팅이 없거나, 지정 된 딜러가 아닐 경우 에러처리
-        except Consulting.DoesNotExist:
-            return JsonResponse({'message': 'CONSULTING_DOES_NOT_EXIST'}, status = 404)

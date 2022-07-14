@@ -64,6 +64,7 @@ INSTALLED_APPS = [
     'cars',
     'notifications',
     'testcar',
+    'django_cleanup.apps.CleanupConfig' , 
 ]
 
 
