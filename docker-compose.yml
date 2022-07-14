@@ -29,7 +29,7 @@ services:
       - ${DB_PORT}:${MYSQL_PORT}
 
   selling_my_car_api:
-    image: ${DOCKER_REGISTRY_B}:main
+    image: ${DOCKER_REGISTRY_B}
     restart: always
     ports:
       - ${API_PORT}:8080
@@ -39,7 +39,7 @@ services:
       - selling_my_car_db
 
   selling_my_car_web:
-    image: ${DOCKER_REGISTRY_F}:dev
+    image: ${DOCKER_REGISTRY_F}
     restart: always
     ports:
       - ${WEB_PORT}:3000
