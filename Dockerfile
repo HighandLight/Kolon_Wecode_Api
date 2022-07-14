@@ -14,6 +14,6 @@ RUN pip install -r requirements.txt
 
 COPY . .
 
-EXPOSE 8000   
+EXPOSE 8080
 
-ENTRYPOINT .entrypoint.sh
+ENTRYPOINT .api_entrypoint.sh

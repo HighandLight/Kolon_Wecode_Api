@@ -39,7 +39,7 @@ services:
       - selling_my_car_db
 
   selling_my_car_web:
-    image: ${DOCKER_REGISTRY_F}:main
+    image: ${DOCKER_REGISTRY_F}:dev
     restart: always
     ports:
       - ${WEB_PORT}:3000

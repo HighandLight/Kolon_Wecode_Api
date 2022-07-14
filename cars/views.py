@@ -208,6 +208,7 @@ class CarInformationView(View):
         results = {
             'car_number'             : car.car_number,
             'owner'                  : car.owner,
+            'phone_number'           : car.phone_number,
             'manufacturer'           : car.manufacturer,
             'car_name'               : car.car_name,
             'trim'                   : car.trim,
