@@ -1,32 +1,9 @@
 version: '3.8'
 
-# volumes:
-#   selling_my_car:
-
 services:
-  # web:
-  #   image: ${DOCKER_REGISTRY_F}:main
-  #   restart: always
-  #   env_file:
-  #     - '.env'
-  #   ports:
-  #     - ${API_PORT}:3000
-  #   depends_on:
-  #     - api
-  api:
-    image: ${DOCKER_REGISTRY_B}:main
-    restart: always
-    env_file:
-      - .env
-    ports:
-      - ${API_PORT}:8000
-    depends_on:
-      - db
-  db:
+  selling_my_car_db:
     image: mariadb
     restart: always
-    env_file:
-      - .env
     command:
       - --default-authentication-plugin=mysql_native_password
       - --max-allowed-packet=268435456
@@ -34,6 +11,37 @@ services:
       - --collation-server=utf8mb4_general_ci
       - --skip-character-set-client-handshake
     volumes:
-      - /Users/ddino/project/test:/var/lib/mysql/
+      - ${PWD}/database:/var/lib/mysql
+    environment:
+      - TZ=Asia/Seoul
+      - MYSQL_PORT=${MYSQL_PORT}
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+    healthcheck:
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
+      interval: 1m30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     ports:
-      - '${DB_PORT}:3306'
+      - ${DB_PORT}:${MYSQL_PORT}
+
+  selling_my_car_api:
+    image: ${DOCKER_REGISTRY_B}:main
+    restart: always
+    ports:
+      - ${API_PORT}:8080
+    volumes: 
+      - ${PWD}/api:/home
+    depends_on:
+      - selling_my_car_db
+
+  selling_my_car_web:
+    image: ${DOCKER_REGISTRY_F}:dev
+    restart: always
+    ports:
+      - ${WEB_PORT}:3000
+    depends_on:
+      - selling_my_car_api

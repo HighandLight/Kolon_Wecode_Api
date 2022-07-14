@@ -209,6 +209,7 @@ class CarInformationView(View):
         results = {
             'car_number'             : car.car_number,
             'owner'                  : car.owner,
+            'phone_number'           : car.phone_number,
             'manufacturer'           : car.manufacturer,
             'car_name'               : car.car_name,
             'trim'                   : car.trim,
@@ -223,7 +224,7 @@ class CarInformationView(View):
             'transaction_history'    : [history.history for history in car.transactionhistory_set.all()]
         }
         
-        return JsonResponse({'results': results}, status=200)
+        return JsonResponse({'message': 'SUCCESS', 'results': results}, status=200)
         
     # 차량 관련 전체 정보 삭제하기
     @login_decorator
@@ -244,10 +245,15 @@ class CarPriceView(View):
         # 차량시세 그래프 용 차량이름, 트림
         cars_1 = TestCar.objects.filter(car_name = request.car.car_name, trim = request.car.trim)
         
-        transaction = [{
-            'model_year': car.model_year,
-            'price'     : car.transaction_price,
-        }for car in cars_1]
+        model_year = [int(car.model_year) for car in cars_1]
+        transaction_price = [car.transaction_price for car in cars_1]
+        
+        i = 0
+        transaction = []
+        for i in range(len(model_year)):
+            a = [model_year[i], transaction_price[i]]
+            transaction.append(a)
+            i += 1
         
         # 차량시세 그래프 용 차량이름, 트림, 연식
         cars_2 = TestCar.objects.filter\
@@ -259,4 +265,12 @@ class CarPriceView(View):
         # 차량시세 그래프 용 차량이름, 트림 개수 / 추후 x개 이하 일 경우 데이터가 부족하다는 문구 띄울 예정
         count = len(cars_2)
         
-        return JsonResponse({'estimated_price': int(estimated_price), 'transaction_count' : count, 'transaction': transaction}, status=200)
+        model_year_index = model_year.index(max(model_year))
+        transaction_price_index = transaction_price.index(max(transaction_price))
+        max_result = [model_year[model_year_index] + 1, transaction_price[transaction_price_index]]
+        
+        model_year_index = model_year.index(min(model_year))
+        transaction_price_index = transaction_price.index(min(transaction_price))
+        min_result = [model_year[model_year_index] - 1, transaction_price[transaction_price_index]]
+
+        return JsonResponse({'estimated_price': int(estimated_price), 'transaction_count' : count, 'transaction': transaction, 'max_result' : max_result, 'min_result' : min_result}, status=200)

@@ -28,7 +28,7 @@ class Estimate(TimeStampModel):
 
 class EstimateCarImage(models.Model):
     estimate   = models.ForeignKey('estimates.Estimate', on_delete = models.CASCADE)
-    image_info = models.CharField(max_length = 200)
+    image_info = models.CharField(max_length = 200, null=True)
     image      = models.ImageField(upload_to='images/',blank=True, null=True)
 
     class Meta:

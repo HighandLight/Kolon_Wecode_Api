@@ -165,20 +165,22 @@ class EstimateImageView(View):
     def post(self, request): 
         try :
             estimate = Estimate.objects.get(car_id = request.car.id)
-            images        = request.FILES.getlist('image')
-            image_infos   = request.POST.getlist('image_info')
+            images   = request.FILES.getlist('image')
             
             i = 0
             for i in range(len(images)):
                 #이미 등록된 사진(사진정보)이 있을 경우 삭제
-                if EstimateCarImage.objects.filter(image_info = image_infos[i]):
+                if estimate.estimatecarimage_set.filter(image_info = [i]):
                     EstimateCarImage.objects.filter(estimate_id = estimate.id).delete()
+                    
                 EstimateCarImage.objects.create(
                     estimate   = estimate,
-                    image_info = image_infos[i],
+                    image_info = [i],
                     image      = images[i],
                 )
+                print(i)
                 i += 1
+                
             # process_state 변경 
             estimate.process_state = "사진등록"
             estimate.save()
